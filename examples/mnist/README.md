@@ -7,12 +7,15 @@ The core of this code has been adapted from [candle](https://github.com/huggingf
 
 ## Models and Performance
 - **Linear Model**: Achieves an accuracy of 91.5%
-- **MLP (Multi-Layer Perceptron) Model**: Achieves an accuracy of 88.49%
+- **MLP (Multi-Layer Perceptron) Model**: Achieves an accuracy of 88.4%
 - **CNN (Convolutional Neural Network) Model**: 
 
-- **Bit-Linear Model**: Achieves an accuracy of 85.1%
-- **Bit-MLP Model**: Achieves an accuracy of 88.23%
+- **Bit-Linear Model**: Achieves an accuracy of 85.8%
+- **Bit-MLP Model**: Achieves an accuracy of 88.2%
 - **Bit-CNN Model**: 
+
+- **Bit-Linear 1.58-bit Model** Archieves an accuracy of 85.1%
+- **Bit-MLP 1.58-bit Model** Archieves an accuracy of 93.9%
 
 ## Dependencies
 - `clap` for command-line argument parsing
@@ -26,6 +29,17 @@ To train different models on the MNIST dataset, you can run the main function. Y
 ```bash
 cargo run -- [MODEL] [OPTIONS]
 ```
+
+### MODEL
+- `linear`: Linear Model
+- `mlp`: MLP(Multi-Layer Perceptron) Model
+- `cnn`: CNN (Convolutional Neural Network) Model
+- `bit-linear`: Bit-Linear Model
+- `bit-mlp`: Bit-MLP Model
+- `bit-cnn`: Bit-CNN Model
+- `bit-linear1_58`: 1.58-Bit-Linear Model
+- `bit-mlp1_58`: 1.58-Bit-MLP Model
+
 
 ### Options
 - `--learning_rate`: Learning rate for training. Default values are provided for each model.

@@ -18,6 +18,7 @@ use candle_core::{DType, Result, Tensor, D};
 use candle_nn::{loss, ops, Conv2d, Linear, Module, ModuleT, Optimizer, VarBuilder, VarMap};
 
 use bitnet_rs::bitlinear::{BitLinear, BitLinearConfig, bitlinear};
+use bitnet_rs::bitlinear1_58::{BitLinear1_58, BitLinear1_58Config, bitlinear1_58};
 
 const IMAGE_DIM: usize = 784;
 const LABELS: usize = 10;
@@ -69,6 +70,21 @@ impl Model for BitLinearModel {
     
 }
 
+struct BitLinear1_58Model {
+    linear: BitLinear1_58,
+}
+
+impl Model for BitLinear1_58Model {
+    fn new(vs: VarBuilder) -> Result<Self> {
+        let linear = bitlinear1_58(IMAGE_DIM, LABELS, BitLinear1_58Config::default(), vs)?;
+        Ok(Self { linear })
+    }
+
+    fn forward(&self, xs: &Tensor) -> Result<Tensor> {
+        self.linear.forward(xs)
+    }
+}
+
 struct Mlp {
     ln1: Linear,
     ln2: Linear,
@@ -105,6 +121,26 @@ impl Model for BitMlp {
         let xs = xs.relu()?;
         self.ln2.forward(&xs)
     }
+}
+
+struct BitMlp1_58 {
+    ln1: BitLinear1_58,
+    ln2: BitLinear1_58,
+}
+
+impl Model for BitMlp1_58 {
+    fn new(vs: VarBuilder) -> Result<Self> {
+        let ln1 = bitlinear1_58(IMAGE_DIM, 100, BitLinear1_58Config::default(), vs.pp("ln1"))?;
+        let ln2 = bitlinear1_58(100, LABELS, BitLinear1_58Config::default(), vs.pp("ln2"))?;
+        Ok(Self { ln1, ln2 })
+    }
+
+    fn forward(&self, xs: &Tensor) -> Result<Tensor> {
+        let xs = self.ln1.forward(xs)?;
+        let xs = xs.relu()?;
+        self.ln2.forward(&xs)
+    }
+    
 }
 
 #[derive(Debug)]
@@ -201,6 +237,10 @@ fn training_loop_cnn<M: CnnModel>(
 ) -> anyhow::Result<()> {
     const BSIZE: usize = 64;
 
+    #[cfg(feature = "metal")]
+    let dev = candle_core::Device::new_metal(0)?;
+
+    #[cfg(not(feature = "metal"))]
     let dev = candle_core::Device::cuda_if_available(0)?;
 
     let train_labels = m.train_labels;
@@ -264,6 +304,11 @@ fn training_loop<M: Model>(
     m: candle_datasets::vision::Dataset,
     args: &TrainingArgs,
 ) -> anyhow::Result<()> {
+
+    #[cfg(feature = "metal")]
+    let dev = candle_core::Device::new_metal(0)?;
+
+    #[cfg(not(feature = "metal"))]
     let dev = candle_core::Device::cuda_if_available(0)?;
 
     let train_labels = m.train_labels;
@@ -317,6 +362,8 @@ enum WhichModel {
     BitLinear,
     BitMlp,
     BitCnn,
+    BitLinear1_58,
+    BitMlp1_58,
 }
 
 #[derive(Parser, Debug)]
@@ -363,6 +410,8 @@ pub fn main() -> anyhow::Result<()> {
         WhichModel::BitLinear => 1.5,
         WhichModel::BitMlp => 0.5,
         WhichModel::BitCnn => 0.01,
+        WhichModel::BitLinear1_58 => 1e-2,
+        WhichModel::BitMlp1_58 => 0.5,
     };
     let training_args = TrainingArgs {
         epochs: args.epochs,
@@ -379,5 +428,7 @@ pub fn main() -> anyhow::Result<()> {
         WhichModel::BitLinear => training_loop::<BitLinearModel>(m, &training_args),
         WhichModel::BitMlp => training_loop::<BitMlp>(m, &training_args),
         WhichModel::BitCnn => training_loop_cnn::<BitConvNet>(m, &training_args),
+        WhichModel::BitLinear1_58 => training_loop::<BitLinear1_58Model>(m, &training_args),
+        WhichModel::BitMlp1_58 => training_loop::<BitMlp1_58>(m, &training_args),
     }
 }

@@ -1,18 +1,18 @@
 use candle_core::{D, Result, Tensor};
 
 pub fn sign(x: &Tensor) -> Result<Tensor> {
-    let dtype = x.dtype();
-    let zero = Tensor::zeros_like(&x)?;
-    let sign_x = x.gt(&zero)?.to_dtype(dtype)? - x.lt(&zero)?.to_dtype(dtype)? - x.eq(&zero)?.to_dtype(dtype)?;
-    sign_x
-
+    // let dtype = x.dtype();
     // let zero = Tensor::zeros_like(&x)?;
-    // let one = Tensor::ones_like(&x)?;
-    // let minus_one = one.neg()?;
-
-    // let sign_x = x.gt(&zero)?.where_cond(&one, &minus_one);
-
+    // let sign_x = x.gt(&zero)?.to_dtype(dtype)? - x.lt(&zero)?.to_dtype(dtype)? - x.eq(&zero)?.to_dtype(dtype)?;
     // sign_x
+
+    let zero = Tensor::zeros_like(&x)?;
+    let one = Tensor::ones_like(&x)?;
+    let minus_one = one.neg()?;
+
+    let sign_x = x.gt(&zero)?.where_cond(&one, &minus_one);
+
+    sign_x
 }
 
 pub fn min_all(x: &Tensor) -> Result<Tensor> {
@@ -31,8 +31,24 @@ pub fn gamma(x: &Tensor) -> Result<Tensor> {
     x.abs()?.max_keepdim(D::Minus1)
 }
 
-pub fn ste(x: &Tensor) -> Result<Tensor> {
-    sign(&x)?.sub(&x)?.detach().add(&x)
+pub fn gamma1_58(x: &Tensor) -> Result<Tensor> {
+    x.abs()?.mean_all()
+}
+
+pub fn round_clip(x: &Tensor, min: f64, max: f64) -> Result<Tensor> {
+    x.round()?.minimum(max)?.maximum(min)
+}
+
+pub fn sign_ste(x: &Tensor) -> Result<Tensor> {
+    let sign_x = sign(&x)?;
+    let output = (sign_x.detach() - x.detach() + x)?;
+    Ok(output)
+}
+
+pub fn round_clip_ste(x: &Tensor, min: f64, max: f64) -> Result<Tensor> {
+    let clip_x = round_clip(&x, min, max)?;
+    let output = (clip_x.detach() - x.detach() + x)?;
+    Ok(output)
 }
 
 pub fn sub_ln(x: &Tensor, eps: f64) -> Result<Tensor> {

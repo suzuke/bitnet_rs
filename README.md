@@ -1,8 +1,8 @@
 
 # BitNet
-## This is an unofficial implementation of [BitNet](https://arxiv.org/abs/2310.11453).
+This is an unofficial implementation of: [BitNet: Scaling 1-bit Transformers for Large Language Models](https://arxiv.org/abs/2310.11453) and [The Era of 1-bit LLMs: All Large Language Models are in 1.58 Bits](https://arxiv.org/abs/2402.17764).
 
-BitLinear is a candle module for training and inferencing binarized (1-bit) linear layers, which is a key component of the [BitNet](https://arxiv.org/abs/2310.11453) architecture. It can effectively reduce the memory footprint and energy consumption of large language models while maintaining competitive performance compared to full-precision models.
+BitLinear and BitLinear1_58 are candle modules for training and inferencing binarized linear layers, which is a key component of the [BitNet](https://arxiv.org/abs/2310.11453) and [BitNet1.58](https://arxiv.org/abs/2402.17764) architecture. It can effectively reduce the memory footprint and energy consumption of large language models while maintaining competitive performance compared to full-precision models.
 
 ## Features
 
@@ -55,7 +55,7 @@ The `BitLinearConfig` struct allows you to customize the behavior of the `BitLin
 
 ## Examples
 
-You can find examples of using `BitLinear` in the [examples](./examples/).
+You can find examples of using `BitLinear` and `BitLinear1_58` in the [examples](./examples/).
 
 ## Contributing
 
@@ -65,11 +65,22 @@ Contributions are welcome! If you find any issues or have suggestions for improv
 
 If you use BitLinear in your research, please cite the following paper:
 
+BitNet: Scaling 1-bit Transformers for Large Language Models
 ```
 @article{wang2023bitnet,
   title={BitNet: Scaling 1-bit Transformers for Large Language Models},
   author={Wang, Hongyu and Ma, Shuming and Dong, Li and Huang, Shaohan and Wang, Huaijie and Ma, Lingxiao and Yang, Fan and Wang, Ruiping and Wu, Yi and Wei, Furu},
   journal={arXiv preprint arXiv:2310.11453},
   year={2023}
+}
+```
+
+The Era of 1-bit LLMs: All Large Language Models are in 1.58 Bits
+```
+@article{ma2024era,
+title={The Era of 1-bit LLMs: All Large Language Models are in 1.58 Bits},
+author={Ma, Shuming and Wang, Hongyu and Ma, Lingxiao and Wang, Lei and Wang, Wenhui and Huang, Shaohan and Dong, Li and Wang, Ruiping and Xue, Jilong and Wei, Furu},
+journal={arXiv preprint arXiv:2402.17764},
+year={2024}
 }
 ```
