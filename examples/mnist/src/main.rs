@@ -420,7 +420,7 @@ pub fn main() -> anyhow::Result<()> {
         save: args.save,
     };
 
-    println!("Training model: {:?}", args.model);
+    println!("Training model: {:?} with learning-rate: {:?}", args.model, training_args.learning_rate);
     match args.model {
         WhichModel::Linear => training_loop::<LinearModel>(m, &training_args),
         WhichModel::Mlp => training_loop::<Mlp>(m, &training_args),
