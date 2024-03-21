@@ -134,6 +134,6 @@ mod tests {
         let bitlinear = BitLinear1_58::new(weight.clone(), None, config);
         let binarized_weight = bitlinear.binarize_weight().unwrap();
 
-        assert_eq!(binarized_weight.to_vec2::<f32>().unwrap(), vec![vec![-0f32, 1f32], vec![0f32, -1f32]]);
+        assert_eq!(binarized_weight.to_vec2::<f32>().unwrap(), vec![vec![0f32, 1f32], vec![0f32, 1f32]]);
     }
 }

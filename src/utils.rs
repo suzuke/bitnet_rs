@@ -62,7 +62,7 @@ pub fn sub_ln(x: &Tensor, eps: f64) -> Result<Tensor> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use candle_core::{DType, Device, Tensor};
+    use candle_core::{DType, Device, Tensor, Var};
 
     const DEVICE : &Device = &Device::Cpu;
 
@@ -120,9 +120,37 @@ mod tests {
         assert_eq!(output.to_vec1::<f32>().unwrap(), vec![0f32]);
     }
 
-    // #[test]
-    // fn test_ste() {
-    //     todo!("test_ste");
-    // }
+    #[test]
+    fn test_sign_ste() {
+        let x = Var::new(&[3f32, -1., 4.], DEVICE).unwrap();
+        let x = x.as_tensor();
+
+        let y = sign(&x).unwrap();
+        let grads = y.backward().unwrap();
+        let grad_x = grads.get(&x);
+        assert!(!grad_x.is_some());
+
+        let y = sign_ste(&x).unwrap();
+        let grads = y.backward().unwrap();
+        let grad_x = grads.get(&x);
+        assert!(grad_x.is_some());
+    }
+
+    #[test]
+    fn test_round_clip_ste() {
+        let x = Var::new(&[3f32, -1., 4.], DEVICE).unwrap();
+        let x = x.as_tensor();
+
+        let y = round_clip(&x, -1., 1.).unwrap();
+        let grads = y.backward().unwrap();
+        let grad_x = grads.get(&x);
+        assert!(!grad_x.is_some());
+
+        let y = round_clip_ste(&x, -1., 1.).unwrap();
+        let grads = y.backward().unwrap();
+        let grad_x = grads.get(&x);
+        assert!(grad_x.is_some());
+
+    }
 }
 
