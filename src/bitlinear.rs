@@ -148,6 +148,13 @@ mod tests {
         let binarized_weight = bitlinear.binarize_weight().unwrap();
         //sign([[-0.675,  1.325], [-0.575, -0.075]]) = [[-1, 1], [-1, -1]]
         assert_eq!(binarized_weight.to_vec2::<f32>().unwrap(), vec![vec![-1f32, 1f32], vec![-1f32, -1f32]]);
+
+
+        let rand_weight = Tensor::rand(-100f32, 100f32, (10, 10), DEVICE).unwrap();
+        let bitlinear = BitLinear::new(rand_weight.clone(), None, config.bit_width, config.eps, config.use_before_nonlinear);
+        let binarized_weight = bitlinear.binarize_weight().unwrap().flatten_all().unwrap().to_vec1::<f32>().unwrap();
+        // all elements are -1 or 1
+        assert!(binarized_weight.iter().all(|x| *x == -1f32 || *x == 1f32));
     }
 }
 

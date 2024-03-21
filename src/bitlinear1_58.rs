@@ -138,5 +138,13 @@ mod tests {
         //Round([[-0.15999744, 3.03995136],[ 0., 0.7999872 ]]) = [[0.,  3.],[ 0.,  1.]]
         //Clip([0.,  3.],[ 0.,  1.]) = [[0.,  1.],[0.,  1.]]
         assert_eq!(binarized_weight.to_vec2::<f32>().unwrap(), vec![vec![0f32, 1f32], vec![0f32, 1f32]]);
+
+        let rand_weight = Tensor::rand(-100f32, 100f32, (10, 10), DEVICE).unwrap();
+        let bitlinear = BitLinear1_58::new(rand_weight.clone(), None, config.bit_width, config.eps);
+        let binarized_weight = bitlinear.binarize_weight().unwrap().flatten_all().unwrap().to_vec1::<f32>().unwrap();
+        // all elements are -1 or 0 or 1
+        assert!(binarized_weight.iter().all(|x| *x == -1f32 || *x == 0f32 || *x == 1f32));
+
+
     }
 }
