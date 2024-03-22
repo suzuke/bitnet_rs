@@ -62,7 +62,7 @@ impl BitLinear1_58 {
         // scale = 127.0 / x.abs().max(dim=−1, keepdim=True).values.clamp_(min=1e−5)
         // y = (x * scale).round().clamp_(−128, 127) / scale
         let (quant_lo, quant_up) = self.quant_range;
-        let scale = ( quant_up / &x.abs()?.max_keepdim(D::Minus1)?.maximum(self.eps)?)?;
+        let scale = (quant_up / &x.abs()?.max_keepdim(D::Minus1)?.maximum(self.eps)?)?;
         let y = x.broadcast_mul(&scale)?.round()?.clamp(quant_lo, quant_up)?;
         Ok((y, scale))
     }
@@ -134,62 +134,63 @@ pub fn bitlinear1_58<C: Into<BitLinear1_58Config>>(
 }
 
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use candle_core::{DType, Device, Tensor};
-//     use candle_nn::VarMap;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use candle_core::{DType, Device, Tensor};
+    use candle_nn::VarMap;
 
-//     const DEVICE : &Device = &Device::Cpu;
-//     const DTYPE : DType = DType::F32;
+    const DEVICE : &Device = &Device::Cpu;
+    const DTYPE : DType = DType::F32;
 
-//     #[test]
-//     fn test_bitlinear1_58() {
-//         let batch_dim = 1;
-//         let in_dim = 4;
-//         let out_dim = 3;
-//         let varmap = VarMap::new();
-//         let vb = VarBuilder::from_varmap(&varmap, DTYPE, DEVICE);
-//         let weight = Tensor::ones((out_dim, in_dim), DTYPE, DEVICE).unwrap();
-//         let bias = Tensor::zeros(out_dim, DTYPE, DEVICE).unwrap();
-//         let config = BitLinear1_58Config::default();
-//         let rms_norm = rms_norm(in_dim, config.eps, vb).unwrap();
-//         let bitlinear = BitLinear1_58::new(weight.clone(), Some(bias), rms_norm, config.bit_width, config.eps);
+    #[test]
+    fn test_bitlinear1_58() {
+        let batch_dim = 1;
+        let in_dim = 4;
+        let out_dim = 3;
+        let varmap = VarMap::new();
+        let vb = VarBuilder::from_varmap(&varmap, DTYPE, DEVICE);
+        let weight = Tensor::ones((out_dim, in_dim), DTYPE, DEVICE).unwrap();
+        let bias = Tensor::zeros(out_dim, DTYPE, DEVICE).unwrap();
+        let config = BitLinear1_58Config::default();
+        let rms_norm = rms_norm(in_dim, config.eps, vb).unwrap();
+        let bitlinear = BitLinear1_58::new(weight.clone(), Some(bias), rms_norm, config.bit_width, config.eps);
 
-//         let input = Tensor::ones((batch_dim, in_dim), DTYPE, DEVICE).unwrap();
-//         let output = bitlinear.forward_t(&input, true).unwrap();
+        let input = Tensor::ones((batch_dim, in_dim), DTYPE, DEVICE).unwrap();
+        let output = bitlinear.forward_t(&input, true).unwrap();
 
-//         assert_eq!(bitlinear.weight().to_vec2::<f32>().unwrap(), weight.to_vec2::<f32>().unwrap());
-//         assert_eq!(output.dims().to_vec(), vec![batch_dim, out_dim]);
-//     }
+        assert_eq!(bitlinear.weight().to_vec2::<f32>().unwrap(), weight.to_vec2::<f32>().unwrap());
+        assert_eq!(output.dims().to_vec(), vec![batch_dim, out_dim]);
+    }
 
-//     #[test]
-//     fn test_weight_quant() {
-//         let varmap = VarMap::new();
-//         let vb = VarBuilder::from_varmap(&varmap, DTYPE, DEVICE);
-//         let weight = Tensor::from_vec(vec![-0.1f32, 1.9, 0.0, 0.5], (2, 2), DEVICE).unwrap();
-//         // (0.1+1.9+0.0+0.5)/4 = 0.625, [[-0.1, 1.9], [0.0, 0.5]]/(0.625+1e-5) = [[-0.15999744, 3.03995136],[ 0., 0.7999872 ]]
-//         let config = BitLinear1_58Config::default();
-//         let bitlinear = BitLinear1_58::new(
-//             weight.clone(),
-//             None,
-//             rms_norm(2, config.eps, vb.clone()).unwrap(),
-//             config.bit_width, config.eps);
-//         let binarized_weight = bitlinear.weight_quant().unwrap();
-//         //Round([[-0.15999744, 3.03995136],[ 0., 0.7999872 ]]) = [[0.,  3.],[ 0.,  1.]]
-//         //Clip([0.,  3.],[ 0.,  1.]) = [[0.,  1.],[0.,  1.]]
-//         assert_eq!(binarized_weight.to_vec2::<f32>().unwrap(), vec![vec![0f32, 1f32], vec![0f32, 1f32]]);
+    #[test]
+    fn test_weight_quant() {
+        let varmap = VarMap::new();
+        let vb = VarBuilder::from_varmap(&varmap, DTYPE, DEVICE);
+        let weight = Tensor::from_vec(vec![-0.1f32, 1.9, 0.0, 0.5], (2, 2), DEVICE).unwrap();
+        // // (0.1+1.9+0.0+0.5)/4 = 0.625, [[-0.1, 1.9], [0.0, 0.5]]/(0.625+1e-5) = [[-0.15999744, 3.03995136],[ 0., 0.7999872 ]]
+        let config = BitLinear1_58Config::default();
+        let bitlinear = BitLinear1_58::new(
+            weight,
+            None,
+            rms_norm(2, config.eps, vb.pp("rms_norm_1")).unwrap(),
+            config.bit_width, config.eps);
+        let (quat_w, _) = bitlinear.weight_quant().unwrap();
+        // // Round([[-0.15999744, 3.03995136],[ 0., 0.7999872 ]]) = [[0.,  3.],[ 0.,  1.]]
+        // //Clip([0.,  3.],[ 0.,  1.]) = [[0.,  1.],[0.,  1.]]
+        assert_eq!(quat_w.to_vec2::<f32>().unwrap(), vec![vec![0f32, 1f32], vec![0f32, 1f32]]);
 
-//         let rand_weight = Tensor::rand(-100f32, 100f32, (10, 10), DEVICE).unwrap();
-//         let bitlinear = BitLinear1_58::new(
-//             rand_weight.clone(),
-//             None,
-//             rms_norm(10, config.eps, vb.clone()).unwrap(),
-//             config.bit_width, config.eps);
-//         let binarized_weight = bitlinear.weight_quant().unwrap().flatten_all().unwrap().to_vec1::<f32>().unwrap();
-//         // all elements are -1 or 0 or 1
-//         assert!(binarized_weight.iter().all(|x| *x == -1f32 || *x == 0f32 || *x == 1f32));
+        let rand_weight = Tensor::rand(-100f32, 100f32, (10, 10), DEVICE).unwrap();
+        let bitlinear = BitLinear1_58::new(
+            rand_weight,
+            None,
+            rms_norm(10, config.eps, vb.pp("rms_norm_2")).unwrap(),
+            config.bit_width, config.eps);
+        let (quat_w, _) = bitlinear.weight_quant().unwrap();
+        let quat_w = quat_w.flatten_all().unwrap().to_vec1::<f32>().unwrap();
+        // all elements are -1 or 0 or 1
+        assert!(quat_w.iter().all(|x| *x == -1f32 || *x == 0f32 || *x == 1f32));
 
 
-//     }
-// }
+    }
+}
