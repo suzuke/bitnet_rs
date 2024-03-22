@@ -1,9 +1,6 @@
 
 //This code has been adapted from
 //https://github.com/huggingface/candle/blob/455c42aa729d8019fcb496106478e75dd3246c08/candle-examples/examples/mnist-training/main.rs
-//Linear: 91.5%, Mlp: 88.49%, Cnn: %
-//BitLinear: 85.1%, BitMlp: 88.23%, BitCnn: %
-
 
 #[cfg(feature = "mkl")]
 extern crate intel_mkl_src;
@@ -31,11 +28,6 @@ fn linear_z(in_dim: usize, out_dim: usize, vs: VarBuilder) -> Result<Linear> {
 
 trait Model: Sized {
     fn new(vs: VarBuilder) -> Result<Self>;
-    fn forward(&self, xs: &Tensor) -> Result<Tensor>;
-}
-
-trait CnnModel: Sized {
-    fn new(vs: VarBuilder) -> Result<Self>;
     fn forward(&self, xs: &Tensor, train: bool) -> Result<Tensor>;
 }
 
@@ -49,7 +41,7 @@ impl Model for LinearModel {
         Ok(Self { linear })
     }
 
-    fn forward(&self, xs: &Tensor) -> Result<Tensor> {
+    fn forward(&self, xs: &Tensor, train: bool) -> Result<Tensor> {
         self.linear.forward(xs)
     }
 }
@@ -64,7 +56,7 @@ impl Model for BitLinearModel {
         Ok(Self { linear })
     }
 
-    fn forward(&self, xs: &Tensor) -> Result<Tensor> {
+    fn forward(&self, xs: &Tensor, train: bool) -> Result<Tensor> {
         self.linear.forward(xs)
     }
     
@@ -80,8 +72,8 @@ impl Model for BitLinear1_58Model {
         Ok(Self { linear })
     }
 
-    fn forward(&self, xs: &Tensor) -> Result<Tensor> {
-        self.linear.forward(xs)
+    fn forward(&self, xs: &Tensor, train: bool) -> Result<Tensor> {
+        self.linear.forward_t(xs, train)
     }
 }
 
@@ -97,7 +89,7 @@ impl Model for Mlp {
         Ok(Self { ln1, ln2 })
     }
 
-    fn forward(&self, xs: &Tensor) -> Result<Tensor> {
+    fn forward(&self, xs: &Tensor, train: bool) -> Result<Tensor> {
         let xs = self.ln1.forward(xs)?;
         let xs = xs.relu()?;
         self.ln2.forward(&xs)
@@ -116,7 +108,7 @@ impl Model for BitMlp {
         Ok(Self { ln1, ln2 })
     }
 
-    fn forward(&self, xs: &Tensor) -> Result<Tensor> {
+    fn forward(&self, xs: &Tensor, train: bool) -> Result<Tensor> {
         let xs = self.ln1.forward(xs)?;
         let xs = xs.relu()?;
         self.ln2.forward(&xs)
@@ -135,10 +127,10 @@ impl Model for BitMlp1_58 {
         Ok(Self { ln1, ln2 })
     }
 
-    fn forward(&self, xs: &Tensor) -> Result<Tensor> {
-        let xs = self.ln1.forward(xs)?;
+    fn forward(&self, xs: &Tensor, train: bool) -> Result<Tensor> {
+        let xs = self.ln1.forward_t(xs, train)?;
         let xs = xs.relu()?;
-        self.ln2.forward(&xs)
+        self.ln2.forward_t(&xs, train)
     }
     
 }
@@ -152,7 +144,7 @@ struct ConvNet {
     dropout: candle_nn::Dropout,
 }
 
-impl CnnModel for ConvNet {
+impl Model for ConvNet {
     fn new(vs: VarBuilder) -> Result<Self> {
         let conv1 = candle_nn::conv2d(1, 32, 5, Default::default(), vs.pp("c1"))?;
         let conv2 = candle_nn::conv2d(32, 64, 5, Default::default(), vs.pp("c2"))?;
@@ -192,7 +184,7 @@ struct BitConvNet {
     dropout: candle_nn::Dropout,
 }
 
-impl CnnModel for BitConvNet {
+impl Model for BitConvNet {
     fn new(vs: VarBuilder) -> Result<Self> {
         let conv1 = candle_nn::conv2d(1, 32, 5, Default::default(), vs.pp("c1"))?;
         let conv2 = candle_nn::conv2d(32, 64, 5, Default::default(), vs.pp("c2"))?;
@@ -231,7 +223,7 @@ struct TrainingArgs {
     epochs: usize,
 }
 
-fn training_loop_cnn<M: CnnModel>(
+fn training_loop_cnn<M: Model>(
     m: candle_datasets::vision::Dataset,
     args: &TrainingArgs,
 ) -> anyhow::Result<()> {
@@ -328,12 +320,12 @@ fn training_loop<M: Model>(
     let test_images = m.test_images.to_device(&dev)?;
     let test_labels = m.test_labels.to_dtype(DType::U32)?.to_device(&dev)?;
     for epoch in 1..args.epochs {
-        let logits = model.forward(&train_images)?;
+        let logits = model.forward(&train_images, true)?;
         let log_sm = ops::log_softmax(&logits, D::Minus1)?;
         let loss = loss::nll(&log_sm, &train_labels)?;
         sgd.backward_step(&loss)?;
 
-        let test_logits = model.forward(&test_images)?;
+        let test_logits = model.forward(&test_images, false)?;
         let sum_ok = test_logits
             .argmax(D::Minus1)?
             .eq(&test_labels)?
